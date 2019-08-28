@@ -11,18 +11,21 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 
 public class ExcelReader {
 
     private static final String PATH_OF_TEST_RESOURCE = System.getProperty("user.dir") + "//src//test//resources//";
     private String fileName;
+    private ParserSelecter parserSelecter;
 
-    private ExcelReader(String fileName) {
+    private ExcelReader(String fileName, ParserSelecter parserSelecter) {
         this.fileName = fileName;
+        this.parserSelecter = parserSelecter;
     }
 
-    public static ExcelReader createExcelReader(String fileName) {
-        return new ExcelReader(fileName);
+    public static ExcelReader createExcelReader(String fileName, ParserSelecter parserSelecter) {
+        return new ExcelReader(fileName, parserSelecter);
     }
 
     public List<HashMap<String, String>> getRowsBySheetName(String sheetName) throws ExcelException {
@@ -54,19 +57,9 @@ public class ExcelReader {
         for (int j = 0; j < row.getPhysicalNumberOfCells(); j++) {
             Cell currentCell = row.getCell(j);
             String key = headerRow.getCell(j).getStringCellValue();
-            String value = "";
-            switch (currentCell.getCellType()) {
-                case Cell.CELL_TYPE_STRING:
-                    value = currentCell.getStringCellValue();
-                    break;
-                case Cell.CELL_TYPE_NUMERIC:
-                    value = String.valueOf(currentCell.getNumericCellValue()).replace(".0", "");
-                    break;
-                // faltan mas tipo por implementar
-                default:
-                    break;
-            }
-            cells.put(key, value);
+            Optional<Parser> optionalParser = parserSelecter.selectByTypeCell(currentCell);
+            String value = optionalParser.orElseThrow(()-> new IllegalStateException("No existe un convertidor para el tipo de celda específico")).toString(currentCell);
+            cells.put(key, value);r
         }
         return cells;
     }
